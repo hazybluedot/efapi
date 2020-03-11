@@ -4,21 +4,56 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Routing\RouteCollectorProxy as RouteCollectorProxy;
 
+require_once('inc/common_proj_funcs.inc.php');
+require_once('inc/Project.php');
+require_once('sqlHelpers.php');
+
 $group->group('/dropbox', function(RouteCollectorProxy $group) {
-	$group->get('/dropbox', function(Request $request, Response $response, array $args) {
-		return $response->withJSON(array("dbitems" => array(1,2,3,4,5)));
+	$group->get('/', function(Request $request, Response $response, array $args) {
+		$db = $request->getAttribute('efdb');
+		$user = $request->getAttribute('user');
+
+		$q = "SELECT pid, description, visible, time_start, time_late, time_end FROM `dropbox`";
+		if (!in_array($user['priv'], ['admin', 'ta'])) {
+			$q .= " WHERE visible = '1'"; 
+		}
+		
+		$data = $db->query($q . ';', 'result_map'); 
+
+		return $response->withJSON(['status' => true, 'items' => $data]);
 	}); 
-	$group->get('/index', function(Request $request, Response $response, array $args) {
-		return $response->withJSON(array("index" => array(1,2,3,4,5)));
-	}); 
-})->add(function (Request $request, RequestHandler $handler) use($app) {
-	$response = $handler->handle($request);
-	$data = json_decode($response->getBody());
-	$data->middleware = 'got you some middleware';
+
+	$group->group('/{pid}', function(RouteCollectorProxy $group) {
+		$group->get("/[{sid}/]", function(Request $request, Response $response, array $args) {
+			$db = $request->getAttribute('efdb');
+			$user = $request->getAttribute('user');
+			$pi = $request->getAttribute('pi');
 	
-	$response = $app->getResponseFactory()->createResponse();
-	$response->getBody()->write(json_encode($data));
-	return $response->withHeader('Content-Type', 'application/json');
+			$pi->items = $pi->getFileList();
+			return $response->withJSON(['status' => true, 'data' => $pi]);
+		});
+
+		$group->get("/files/", function(Request $request, Response $response) {
+				
+		});
+	})->add(function(Request $request, RequestHandler $handler) use($group) {
+		$classconfig = $request->getAttribute('classconfig');
+		$user = $request->getAttribute('user');
+		$db = $request->getAttribute('efdb');
+		$pid = $request->getAttribute('route')->getArgument('pid');
+
+		try { 
+			$pi = new Project($pid, $db, $classconfig, $user);
+		} catch (\Exception $e) {
+			$response = $group->getResponseFactory()->createResponse();
+			return $response->withJSON(['status' => 'invalid project id'], 422);
+		}	
+
+		$request = $request->withAttribute('pi', $pi);
+		$response = $handler->handle($request);
+
+		return $response;
+	}); 
 });
 
 ?>

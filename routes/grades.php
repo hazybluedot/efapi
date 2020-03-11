@@ -2,18 +2,23 @@
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
-$app->get('/grades/', function (Request $request, Response $response, array $args) {
-	global $GBO;
+$group->get('/grades/', function (Request $request, Response $response, array $args) {
+	$db = $request->getAttribute('efdb');
+	$user = $request->getAttribute('user');
+
 	$q = "SELECT * FROM `gradeitems`";
-	if ($rs = $GBO->query($q)) {
+	if ($rs = $db->query($q)) {
 		$data = result_map($rs);
 	}
 	return $response;
 });
 
-$app->get('/grades/{shortname}', function (Request $request, Response $response, array $args) {
-	global $GBO;
+$group->get('/grades/{shortname}', function (Request $request, Response $response, array $args) {
+	$db = $request->getAttribute('efdb');
+	$user = $request->getAttribute('user');
+
 	$shortname = $args['shortname'];
+
 	$q = "SELECT * FROM `latest_grades` WHERE gi LIKE '$shortname%'";
 	if (!($_SESSION['privs']['admin'] || $_SESSION['privs']['ta'])) {
 		#$response->status(403);
