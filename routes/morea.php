@@ -30,7 +30,7 @@ $group->group('/morea', function(RouteCollectorProxy $group) {
 		$db = $request->getAttribute('efdb');
        	$classconfig = $request->getAttribute('classconfig');
 		$classconfig['user'] = $user; 
- 		$classconfig['netid'] = $user ? $user['username'] : '[netid]';
+ 		$classconfig['netid'] = $user['username'] ? $user['username'] : '[netid]';
 		//$env = array('wwwroot' => $classconfig['wwwroot'], 'user' => $user, 'netid' => $user ? $user['username'] : '[netid]');
 
 		$al = new Resources($db, $classconfig);
