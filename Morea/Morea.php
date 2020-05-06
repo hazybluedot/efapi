@@ -22,10 +22,7 @@ function module_filter($module_id) {
  */
 function module_data($module, $data) {
     $types = array('morea_outcomes', 'morea_readings', 'morea_experiences', 'morea_assessments');
-	if (!is_array($module)) {
-		return [];
-	}
-    $ids = array_reduce($types, function($carry, $type) use ($module) {
+   	$ids = array_reduce($types, function($carry, $type) use ($module) {
         if (array_key_exists($type, $module)) {
             return array_merge($carry, $module[$type]);
         } else {
