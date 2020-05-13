@@ -41,9 +41,9 @@ $group->group('/morea', function(RouteCollectorProxy $group) {
         
         $lib = new Library($user, $classconfig);
         $lib->commitChunk($args['item_id']);
-    }
+    });
         
-	$group->get('/modules/{module_id}', function(Request $request, Response $response, array $args) use ($morea) {
+    $group->get('/modules/{module_id}', function(Request $request, Response $response, array $args) use ($morea) {
         $user = $request->getAttribute('user');
 		$db = $request->getAttribute('efdb');
        	$classconfig = $request->getAttribute('classconfig');
