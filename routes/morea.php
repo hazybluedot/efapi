@@ -3,11 +3,12 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Routing\RouteCollectorProxy as RouteCollectorProxy;
+
 include("Morea/Morea.php");
 require_once("EF/ORM/Resources.php");
 
 use EF\ORM\Resources as Resources;
-
+use EF\ORM\Library as Library;
 
 function push_error($item) {
 	return function($errno, $errstr, $errfile, $errline, $errcontext) use ($item) {
@@ -22,9 +23,26 @@ function push_error($item) {
 $group->group('/morea', function(RouteCollectorProxy $group) {
 	$morea = new Morea('../src/morea');
 	$group->get('/modules/', function(Request $request, Response $response, array $args) use ($morea) {
-		return $response->withJSON($morea->modules());
+		return $response->withJSON(iterator_to_array($morea->modules(), FALSE));
 	})->setName('morea');
 
+    $group->post('/working/items/{item_id}', function(Request $request, Response $response, array $args) use ($morea) {
+        $user = $request->getAttribute('user');
+        $classconfig = $request->getAttribute('classconfig');
+        
+        $lib = new Library($user, $classconfig);
+
+        $lib->stageChunk($args['item_id']);
+    });
+
+    $group->post('/commit/item/{item_id}', function(Request $request, Response $response, array $args) use ($morea) {
+        $user = $request->getAttribute('user');
+        $classconfig = $request->getAttribute('classconfig');
+        
+        $lib = new Library($user, $classconfig);
+        $lib->commitChunk($args['item_id']);
+    }
+        
 	$group->get('/modules/{module_id}', function(Request $request, Response $response, array $args) use ($morea) {
         $user = $request->getAttribute('user');
 		$db = $request->getAttribute('efdb');

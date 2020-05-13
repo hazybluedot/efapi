@@ -5,6 +5,7 @@
 		"slim/http": "^0.7.0",
 		"mnapoli/front-yaml": "^1.6",
 		"twig/twig": "^2.0",
-		"mustache/mustache": "~2.5"
+		"mustache/mustache": "~2.5",
+		"czproject/git-php": "^3.17"
 	}
 }
