@@ -1,26 +1,21 @@
 <?php
 
-function first_item($n)
-{
-    return $n[0];
-}
-
 function filter_by($key, $value) {
     return function($n) use ($key, $value) {
-        return $n[$key] == $value;
+        return isset($n[$key]) && $n[$key] == $value;
     };
 }
 
 function module_filter($module_id) {
     return function($n) use ($module_id) {
-        return $n['morea_type'] == 'module' && $n['morea_id'] == $module_id;
+        return isset($n['morea_type']) && $n['morea_type'] == 'module' && $n['morea_id'] == $module_id;
     };
 }
 
 /* Given a module object, and loaded data,
    Return an array containing all items associated with that module
  */
-function module_data($module, $data) {
+function module_data($module, Iterator $data) {
     $types = array('morea_outcomes', 'morea_readings', 'morea_experiences', 'morea_assessments');
    	$ids = array_reduce($types, function($carry, $type) use ($module) {
         if (array_key_exists($type, $module)) {
@@ -30,11 +25,12 @@ function module_data($module, $data) {
         }
     }, array());
 
-    $items = array_filter($data, function($n) use ($ids) {
+    $items = new CallbackFilterIterator($data, function($n) use ($ids) {
         #print("checking if " . $n['morea_id'] . " in list of ids\n"); 
         return in_array($n['morea_id'], $ids);
     });
 
+    $items = iterator_to_array($items);
     array_unshift($items,$module);
 
     return($items);
@@ -69,35 +65,88 @@ function extractNotes($module) {
 			'notes' => $notes];
 }
 
+class ItemIterator extends IteratorIterator {
+    //private $position = 0;
+    private $files; // = [];
+    private $parser;
+    private $load_contents = false;
+    private $current = null;
+    
+    public function __construct(Iterator $files, bool $load_contents = false) {
+        //$this->position = 0;
+        parent::__construct($files);
+        //$this->files = $files;
+        $this->load_contents = $load_contents;
+		$this->parser = new Mni\FrontYAML\Parser();
+    }
+        
+    public function current() {
+        $current = parent::current();
+        $this->current = call_user_func_array(array($this, 'parse_file'), array($current, $this->load_contents));
+        return $this->current;
+    }
+
+    public function isValid() {
+        return isset($this->current['title']) && isset($this->current['morea_id']);
+    }
+    
+    public function isType($type) {
+        return $this->current['morea_type'] == $type;
+    }
+
+	protected function parse_file($file_name, $load_content = FALSE) {
+	    $parser = $this->parser;
+    	$str = file_get_contents($file_name);
+		if (!$str) {
+			return array('error' => [ 'path' => $file_name ]);
+		}
+    	$document = $parser->parse($str, false);
+	    $yaml = $document->getYAML();
+		$yaml['_source'] = $file_name;
+
+    	if ($load_content) {
+	        $yaml['content'] = str_replace("\r", "", $document->getContent());
+	    } else {
+    	    #$yaml['file_path'] = $file_name;
+	    }
+    	return $yaml;
+	}
+}
+
+class FileIterator extends FilterIterator {
+    public function accept() {
+        $basename = $this->current()->getFilename();
+        $ext = $this->current()->getExtension();
+        return (!in_array($basename[0], array('#', '.'), true) && $ext == 'md');
+    }
+}
+
 class Morea {
 	protected $files = [];
 	protected $parser = NULL;
  
 	function __construct($path) {
-
 		$Dir = new RecursiveDirectoryIterator($path);
-		$Iterator = new RecursiveIteratorIterator($Dir);
-		$Regex = new RegexIterator($Iterator, '/^.+\.md$/i', RecursiveRegexIterator::GET_MATCH);
-
-		$this->files = array_map('first_item', iterator_to_array($Regex, FALSE));
+		$this->files = new FileIterator(new RecursiveIteratorIterator($Dir)); 
 		$this->parser = new Mni\FrontYAML\Parser();
 	}
 
+    function items($load_content = false) {
+        return new CallbackFilterIterator(new ItemIterator($this->files, $load_content), function($item, $key, $iterator) {
+                return $iterator->isValid();
+            });
+    }
+    
 	function modules() {
-    	$data = array_map(array($this, 'parse_file'), $this->files);
-	    $modules = array_filter($data, filter_by('morea_type', 'module'));
+    	$modules = new CallbackFilterIterator($this->items(), filter_by('morea_type', 'module'));
+	    //$modules = array_filter($data, filter_by('morea_type', 'module'));
 		return $modules;
  	}
 
 	function module($module_id) {
-        $data = array_map(array($this, 'parse_file_with_content'), $this->files);
-    
-        $module = array_filter($data, module_filter($module_id));
-
-	    $module = array_values($module)[0];
-		#$rs = module_data($module, $data);
-		return module_data($module, $data);
-
+        $it = new CallbackFilterIterator($this->items(true), module_filter($module_id));
+        $it->next();
+        return module_data($it->current(), $this->items(true));
  	}
 
 	function fetchItem($id) {
