@@ -51,7 +51,7 @@ class Resources {
         	$cutoffs = explode(",", $item['time_weights']);
         	$time_cols =  array_slice($time_cutoffs, 0, count($cutoffs) - 1);
         	array_push($time_cols, 'time_end');
-        	$item['dates'] = array_map(function($weight, $col) use($item) {
+                    	$item['dates'] = array_map(function($weight, $col) use($item) {
            		return ['due' => $item[$col], 'weight' => $weight];
 	        }, $cutoffs, $time_cols);
     	    foreach($time_cutoffs as $name) {
