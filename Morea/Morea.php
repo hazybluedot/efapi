@@ -16,8 +16,8 @@ function module_filter($module_id) {
    Return an array containing all items associated with that module
  */
 function module_data($module, Iterator $data) {
-    $types = array('morea_outcomes', 'morea_readings', 'morea_experiences', 'morea_assessments');
-   	$ids = array_reduce($types, function($carry, $type) use ($module) {
+    $morea_types = Morea::$types;
+   	$ids = array_reduce($morea_types, function($carry, $type) use ($module) {
         if (array_key_exists($type, $module)) {
             return array_merge($carry, $module[$type]);
         } else {
@@ -122,6 +122,7 @@ class FileIterator extends FilterIterator {
 }
 
 class Morea {
+    public static $types = array('morea_outcomes', 'morea_readings', 'morea_experiences', 'morea_assessments');
 	protected $files = [];
 	protected $parser = NULL;
  
@@ -135,6 +136,12 @@ class Morea {
         return new CallbackFilterIterator(new ItemIterator($this->files, $load_content), function($item, $key, $iterator) {
                 return $iterator->isValid();
             });
+    }
+    
+    function getItem($itemid) {
+        $item = new CallbackFilterIterator($this->items, filter_by('morea_id', $itemid));
+        $item->next();
+        return $item->current();
     }
     
 	function modules() {
@@ -152,6 +159,37 @@ class Morea {
 	function fetchItem($id) {
 	}
 
+    function validate() {
+        $items = iterator_to_array($this->items());
+        $report = array_map(function($item) use ($items) {
+            return [$item['morea_id'], $this->validation_report($item, $items)];
+        }, $items);
+        return array_combine(array_column($report, 0), array_column($report, 1));
+    }
+    
+    protected function validation_report($item, $items) {
+        $report = [];
+        $keys = array_map(function($item) { return array_column($item, 'morea_id'); }, $items);
+        if (!isset($item['title'])) $report[] = 'no title';
+        foreach(self::$types as $type) {
+            $children = $item[$type];
+            if (is_array($children)) {
+                foreach($children as $childkey) {
+                    if (!in_array($childkey, $keys)) {
+                        $report[] = "$type/$childkey not found";
+                    } else {
+                        $child = $this->getItem($childkey);
+                        if ($child['morea_type'] !== $type) {
+                            $report[] = "$type/$childkey has mismatched type (" . $child['morea_type'] . ")";
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $report;
+    }
+    
 	protected function parse_file($file_name, $load_content = FALSE) {
 	    $parser = $this->parser;
     	$str = file_get_contents($file_name);
@@ -173,7 +211,7 @@ class Morea {
 	protected function parse_file_with_content($file_name) {
 	    return $this->parse_file($file_name, TRUE);
 	}
-	
+
 }
 
 ?>

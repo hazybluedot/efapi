@@ -4,8 +4,11 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Routing\RouteCollectorProxy as RouteCollectorProxy;
 
+require_once('EF/ORM/Project.php');
+
+use EF\ORM\Project as Project;
+
 require_once('inc/common_proj_funcs.inc.php');
-require_once('inc/Project.php');
 require_once('sqlHelpers.php');
 
 $group->group('/dropbox', function(RouteCollectorProxy $group) {

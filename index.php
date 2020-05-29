@@ -23,10 +23,12 @@ use Slim\Routing\RouteCollectorProxy as RouteCollectorProxy;
 use Slim\Factory\AppFactory;
 
 require_once('inc/ef_middleware.php');
+require_once('config.inc.php');
 
 $app = AppFactory::create();
 
 $app->addBodyParsingMiddleware();
+
 //TODO: for production do not put raw error message in response
 $customErrorHandler = function(Request $request, $exception, bool $displayErrorDetails, bool $logErrors, bool $logErrorDetails) use ($app) {
 		error_log($exception);
@@ -40,7 +42,7 @@ $customErrorHandler = function(Request $request, $exception, bool $displayErrorD
 
 $app->addRoutingMiddleware();
 $errorMiddleware = $app->addErrorMiddleware(true, true, true);
-//$errorMiddleware->setDefaultErrorHandler($customErrorHandler);
+$errorMiddleware->setDefaultErrorHandler($customErrorHandler);
 
 $app->add($efclass_mw);
 $app->add(function($request, $handler) {
@@ -51,19 +53,26 @@ $app->add(function($request, $handler) {
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');	
 });
 
-$app->setBasePath('/ef105-2020-01/api');
+$app->setBasePath($API_BASEPATH);
 
 
 $app->group('', function(RouteCollectorProxy $group)  {
 	require_once('sqlHelpers.php');
 
-	require('routes/morea.php');
+    $group->get('/env', function(Request $request, Response $response, array $args) {
+        $user = $request->getAttribute('user');
+        $classconfig = $request->getAttribute('classconfig');
+        
+        return $response->withJSON(array('user'=>$user, 'wwwroot' => $classconfig['wwwroot'], 'classid' => $classconfig['classid']));
+    });
+
+    require('routes/morea.php');
 	require('routes/dropbox.php');
 	require('routes/sections.php');
 	require('routes/grades.php');
 	require('routes/quiz_activation.php');
 	require('routes/assignments.php');
-	require('routes/response-questions.php');
+	//require('routes/response-questions.php');
 })->add(new EFDbMiddleware($group));
 
 $app->run();

@@ -9,10 +9,20 @@ use EF\ORM\Library as Library;
 
 $user = array('username' => 'dmaczka', 'name' => 'Darren Maczka', 'email' => 'dmaczka@utk.edu');
 
-$library = new Library($user, './test/repos');
+$repoPath = is_dir($argv[1]) ? $argv[1] : './test/repo';
+$library = new Library($user, $repoPath);
+$library->setDebug(true);
 
-$item = $library->get('module-spreadsheet-visualize-timeseries');
+//var_dump($library->items());
+//exit(0);
 
-var_dump($item->getYAML());
-var_dump($item->getContent());
+$item = $library->get('module/spreadsheet-visualize-timeseries');
+
+if ($item) {
+    print(json_encode($item->getYAML(), JSON_PRETTY_PRINT) . "\n");
+    print($item->getContent());
+} else {
+    echo "Item not found\n";
+}
+
 ?>

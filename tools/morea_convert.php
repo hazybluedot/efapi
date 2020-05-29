@@ -14,7 +14,17 @@ $morea_path = isset($argv[1]) ? $argv[1] : $_SERVER['HOME'] . '/src/morea';
 
 $morea = new Morea($morea_path);
 $user = array('username' => 'dmaczka', 'name' => 'Darren Maczka', 'email' => 'dmaczka@utk.edu');
-$library = new Library($user, './test/repos');
+
+$classconfig_path = realpath($script_path . "/../../../inc/classconfig.inc.php");
+if (file_exists($classconfig_path)) {
+    $use_sane_classconfig=true;
+    include_once($classconfig_path);
+}
+
+$repobase = isset($CLASS_CONFIG['repobase']) ? $CLASS_CONFIG['repobase'] : './test/repos';
+echo "Repo base: $repobase\n";
+
+$library = new Library($user, $repobase);
 
 class PropIterator extends IteratorIterator {
     private $prop = null;
@@ -46,7 +56,12 @@ foreach($morea->items(true) as $item) {
     $content = $item['content'];
     unset($item['content']);
     unset($item['_source']);
-    $library->stage($item['morea_id'], $item, $content);
-    $library->commit($item['morea_id'], 'Initial commit', array('--author="Another Author"'));
+    $id = preg_replace('/(module|reading|experience|assessment|outcom)-/i', '', $item['morea_id']);
+    if (isset($item['morea_type']) && in_array($item['morea_type'], array('module', 'reading', 'experience', 'outcome', 'assessment'))) {
+        $item_path = $item['morea_type'] . '/' . $id;
+        $item['morea_id'] = $id;
+        $library->stage($item_path, $item, $content);
+        $library->commit($item_path, 'Initial commit');
+    }
 }
 ?>
