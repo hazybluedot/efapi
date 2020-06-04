@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+rsync -rltuvkL --exclude=.git \
+      --exclude=vendor/ \
+      --exclude='test/' \
+      --exclude='*~' \
+      --exclude='*.swp' \
+      --exclude='.htaccess' \
+      ~/workspace/efapi/ efcms:~/www/apidev/ 
