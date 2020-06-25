@@ -1,4 +1,4 @@
-<?
+<?php
 
 mysqli_report(\MYSQLI_REPORT_ERROR | \MYSQLI_REPORT_STRICT);
 
@@ -8,8 +8,12 @@ class EFDB {
 	private $db = null;
 
 	function __construct($dbhost, $dbuser, $dbpwd, $dbname) {
-		$this->db = new mysqli($dbhost, $dbuser, $dbpwd, $dbname);
-		$this->connect_error = $this->db->connect_error;
+        try {
+            $this->db = new mysqli($dbhost, $dbuser, $dbpwd, $dbname);
+            $this->connect_error = $this->db->connect_error;    
+        } catch (mysqli_sql_exception $e) {
+            throw new RuntimeException("DB connection error:" . $e->getMessage());
+        }
 
 		$this->driver = new mysqli_driver();
 		$this->driver->report_mode = (MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);	

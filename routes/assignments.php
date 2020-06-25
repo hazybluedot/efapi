@@ -1,4 +1,4 @@
-<?
+<?php
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
@@ -28,6 +28,7 @@ $group->group('/assignments', function (RouteCollectorProxy $group) {
         return $response;*/
     });
     
+    /*
     $group->get('/{module_id}', function (Request $request, Response $response, array $args) use ($time_cutoffs, $assignment_map) {
         $db = $request->getAttribute('efdb');
         $time_fields = implode(",", $time_cutoffs);
@@ -37,7 +38,7 @@ $group->group('/assignments', function (RouteCollectorProxy $group) {
         $data = $db->query($q, $assignment_map, "s", $param);
 		
 	    return $response->withJSON($data);
-    });
+    });*/
 });
 
 ?>

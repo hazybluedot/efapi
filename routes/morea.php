@@ -1,4 +1,4 @@
-<?
+<?php
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
@@ -21,7 +21,7 @@ function push_error($item) {
 	};
 }
 
-$libraryGroupMiddleware = function (Request $request, RequestHandler $handler) {
+$libraryGroupMiddleware = function (Request $request, RequestHandler $handler): Response {
     $user = $request->getAttribute('user');
     $classconfig = $request->getAttribute('classconfig');
 
@@ -38,8 +38,23 @@ function mapItemRequest($branch) {
     };
     }*/
 
+$group->group('/modules', function(RouteCollectorProxy $group) {
+    $group->get('/', function(Request $request, Response $response, array $args) {
+        $classconfig = $request->getAttribute('classconfig');
+        $siteFile = $classconfig['localroot'] . '/site.json';
+        $lib = $request->getAttribute('library');
+
+        $site = json_decode(file_get_contents($siteFile));
+        $site->modules = array_map(function($module_id) use ($lib) {
+            $module = $lib->get('module/' . $module_id)->getYAML();
+            return ['id'=>$module_id, 'title'=>$module['title'], 'summary'=>$module['summary'] ?? null];
+        }, $site->modules);
+        return $response->withJSON($site);
+    });
+})->add($libraryGroupMiddleware);
+
 $group->group('/library', function(RouteCollectorProxy $group) {
-    $group->get('/items/', function(Request $request, Response $response, array $args) use ($container) {
+    $group->get('/items/', function(Request $request, Response $response, array $args) {
         $lib = $request->getAttribute('library');
         
         return $response->withJSON($lib->items());
@@ -51,6 +66,11 @@ $group->group('/library', function(RouteCollectorProxy $group) {
         $lib = $request->getAttribute('library');
         extract($args);
         
+        $moreaTypes = array(["type" => "reading", "children_key" => "morea_readings"],
+                    ["type" => "outcome", "children_key" => "morea_outcomes"],
+                    ["type" => "experience", "children_key" => "morea_experiences"],
+                    ["type" => "assessment", "children_key" => "morea_assessments"]);
+
         $userCanViewWorking = in_array($user['priv'], ['admin', 'gta', 'ta']);
         $userCanModify = in_array($user['priv'], ['admin', 'gta']);
         $itemPath = $item_type . '/' . $item_id;
@@ -67,6 +87,15 @@ $group->group('/library', function(RouteCollectorProxy $group) {
                 /* eventually this probably should not be stored in the
                  * .md file at all except for export to morea-strict
                  * format */
+                if (!array_key_exists("items", $resp)) {
+                    $resp['components'] = array_reduce($moreaTypes, function($carry, $type) use ($resp) {
+                        $childIds = $resp[$type['children_key']] ?? [];
+                        return array_merge($carry, $childIds);
+                    }, []);
+                }
+                foreach($moreaTypes as $type) {
+                    unset($resp[$type['children_key']]);
+                }
             }
         }
         

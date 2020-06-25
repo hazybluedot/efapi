@@ -22,8 +22,18 @@ use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Routing\RouteCollectorProxy as RouteCollectorProxy;
 use Slim\Factory\AppFactory;
 
-require_once('inc/ef_middleware.php');
 require_once('config.inc.php');
+require_once('inc/ef_middleware.php');
+
+if (isset($TEST_SESSION)) {
+    file_put_contents("php://stderr", "\nUsing test session");
+    $_SESSION = $TEST_SESSION;
+} else {
+    session_name($CLASS_CONFIG['sessionname']);
+    session_start();    
+}
+
+$user = $_SESSION["user"];
 
 $app = AppFactory::create();
 
@@ -55,7 +65,6 @@ $app->add(function($request, $handler) {
 
 $app->setBasePath($API_BASEPATH);
 
-
 $app->group('', function(RouteCollectorProxy $group)  {
 	require_once('sqlHelpers.php');
 
@@ -73,7 +82,7 @@ $app->group('', function(RouteCollectorProxy $group)  {
 	require('routes/quiz_activation.php');
 	require('routes/assignments.php');
 	//require('routes/response-questions.php');
-})->add(new EFDbMiddleware($group));
+})->add(new EFDbMiddleware($user));
 
 $app->run();
 

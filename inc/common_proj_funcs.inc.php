@@ -1,4 +1,4 @@
-<?
+<?php
 define("DBTABLE","dropbox");
 define("TOPDIR","dropbox");
 define("CMTTABLE","project_cmts");

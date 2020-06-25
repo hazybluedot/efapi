@@ -1,4 +1,4 @@
-<?
+<?php
 
 function identity_fun($item) { return $item; };
 

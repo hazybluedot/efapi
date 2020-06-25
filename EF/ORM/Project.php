@@ -1,4 +1,4 @@
-<?
+<?php
 
 namespace EF\ORM;
 
