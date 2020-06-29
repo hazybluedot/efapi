@@ -21,6 +21,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Routing\RouteCollectorProxy as RouteCollectorProxy;
 use Slim\Factory\AppFactory;
+use Slim\Exception\HttpNotFoundException;
 
 require_once('config.inc.php');
 require_once('inc/ef_middleware.php');
@@ -55,13 +56,7 @@ $errorMiddleware = $app->addErrorMiddleware(true, true, true);
 $errorMiddleware->setDefaultErrorHandler($customErrorHandler);
 
 $app->add($efclass_mw);
-$app->add(function($request, $handler) {
-	$response = $handler->handle($request);
-    return $response
-            ->withHeader('Access-Control-Allow-Origin', '*')
-            ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
-            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');	
-});
+// Lazy CORS, see https://www.slimframework.com/docs/v4/cookbook/enable-cors.html
 
 $app->setBasePath($API_BASEPATH);
 
@@ -83,6 +78,18 @@ $app->group('', function(RouteCollectorProxy $group)  {
 	require('routes/assignments.php');
 	//require('routes/response-questions.php');
 })->add(new EFDbMiddleware($user));
+
+$app->add(function($request, $handler) {
+	$response = $handler->handle($request);
+    return $response
+            ->withHeader('Access-Control-Allow-Origin', '*')
+            ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');	
+});
+
+$app->map(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], '/{routes:.+}', function ($request, $response) {
+    throw new HttpNotFoundException($request);
+});
 
 $app->run();
 

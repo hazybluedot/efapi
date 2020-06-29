@@ -30,7 +30,7 @@ class EFDbMiddleware {
             throw(new RuntimeException("Cound not connect to database"));
 		}
 
-        file_put_contents("php://stdout", "\nEFDbMiddleware request->withAttribute('user'): " . serialize($this->user));
+        //file_put_contents("php://stdout", "\nEFDbMiddleware request->withAttribute('user'): " . serialize($this->user));
 		$request = $request
 			->withAttribute('user', $this->user)
 			->withAttribute('efdb', $efdb)

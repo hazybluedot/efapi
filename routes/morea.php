@@ -39,17 +39,43 @@ function mapItemRequest($branch) {
     }*/
 
 $group->group('/modules', function(RouteCollectorProxy $group) {
-    $group->get('/', function(Request $request, Response $response, array $args) {
+    $group->map(['GET', 'POST', 'PUT', 'OPTIONS'], '/', function(Request $request, Response $response, array $args) {
+        $method = $request->getMethod();
+        file_put_contents("php://stdout", "\nPerforming " . $method . " request on /modules/ endpoint\n");
         $classconfig = $request->getAttribute('classconfig');
         $siteFile = $classconfig['localroot'] . '/site.json';
         $lib = $request->getAttribute('library');
 
         $site = json_decode(file_get_contents($siteFile));
-        $site->modules = array_map(function($module_id) use ($lib) {
-            $module = $lib->get('module/' . $module_id)->getYAML();
-            return ['id'=>$module_id, 'title'=>$module['title'], 'summary'=>$module['summary'] ?? null];
-        }, $site->modules);
-        return $response->withJSON($site);
+        
+        switch ($method) {
+            case 'GET':
+                $site->modules = array_map(function($module_id) use ($lib) {
+                    $module = $lib->get('module/' . $module_id)->getYAML();
+                    return ['id'=>$module_id, 'title'=>$module['title'], 'summary'=>$module['summary'] ?? null];
+                }, $site->modules);
+                return $response->withJSON($site);
+            case 'POST':
+            case 'PUT':
+                $reqdata = $request->getParsedBody();
+                file_put_contents("php://stdout", "\nPutting new module list: " . json_encode($reqdata) . "\n");
+                if (!is_array($reqdata)) {
+                    return $response->withJSON(array('message' => 'malformed request, expected array'), 400);
+                }
+
+                $site->modules = $reqdata;
+                $fp = fopen($siteFile, 'w');
+                fwrite($fp, json_encode($site));
+                fclose($fp);
+                $site->modules = array_map(function($module_id) use ($lib) {
+                    $module = $lib->get('module/' . $module_id)->getYAML();
+                    return ['id'=>$module_id, 'title'=>$module['title'], 'summary'=>$module['summary'] ?? null];
+                }, $site->modules);
+                return $response->withJSON(array('message' => 'done. No validation of module IDs was performed.', 'payload' => $site));
+            case 'OPTIONS':
+                $allowed = ['OPTIONS', 'GET'];
+                return $response->withHeader('Allow', implode(', ', $allowed));
+        }
     });
 })->add($libraryGroupMiddleware);
 
